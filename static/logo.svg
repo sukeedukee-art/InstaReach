@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="circleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e" />
+      <stop offset="50%" stop-color="#4ade80" />
+      <stop offset="100%" stop-color="#86efac" />
+    </linearGradient>
+    <linearGradient id="barGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#166534" />
+      <stop offset="100%" stop-color="#22c55e" />
+    </linearGradient>
+    <linearGradient id="barGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22c55e" />
+      <stop offset="100%" stop-color="#4ade80" />
+    </linearGradient>
+    <linearGradient id="barGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4ade80" />
+      <stop offset="100%" stop-color="#86efac" />
+    </linearGradient>
+  </defs>
+
+  <!-- Left Ring Icon -->
+  <g transform="translate(10, 10)">
+    <!-- Outer Arcs -->
+    <path d="M 60 5 A 45 45 0 1 1 15 50" fill="none" stroke="url(#circleGrad)" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 60 16 A 34 34 0 1 1 26 50" fill="none" stroke="url(#circleGrad)" stroke-width="5" stroke-linecap="round"/>
+    
+    <!-- Speed/Scan horizontal bars -->
+    <path d="M -5 18 L 36 18 L 48 30 L 7 30 Z" fill="url(#barGrad1)"/>
+    <path d="M -12 36 L 44 36 L 50 48 L -6 48 Z" fill="url(#barGrad2)"/>
+    <path d="M -16 54 L 38 54 L 42 66 L -12 66 Z" fill="url(#barGrad3)"/>
+  </g>
+
+  <!-- Brand Name: instaReach -->
+  <text x="145" y="70" font-family="'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" font-size="54" font-weight="800" fill="#f9fafb" letter-spacing="-1">insta<tspan fill="#4ade80">Reach</tspan></text>
+  
+  <!-- Subtitle: TELERADIOLOGY -->
+  <text x="148" y="98" font-family="'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" font-size="19" font-weight="400" fill="#4ade80" letter-spacing="9">TELERADIOLOGY</text>
+</svg>

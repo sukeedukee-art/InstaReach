@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>instaReach — Cold Email Outreach Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="brand-header">
+      <div class="brand-logo">
+        <img src="/static/logo.svg" alt="instaReach" />
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="nav-item active" data-page="dashboard">
+        <i class="fa-solid fa-gauge-high"></i>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="campaigns">
+        <i class="fa-solid fa-bullseye"></i>
+        <span>Campaigns</span>
+      </div>
+      <div class="nav-item" data-page="leads">
+        <i class="fa-solid fa-users"></i>
+        <span>Leads & Import</span>
+      </div>
+      <div class="nav-item" data-page="drafts">
+        <i class="fa-solid fa-envelope-open-text"></i>
+        <span>Draft Review</span>
+      </div>
+      <div class="nav-item" data-page="templates">
+        <i class="fa-solid fa-file-lines"></i>
+        <span>Templates</span>
+      </div>
+      <div class="nav-item" data-page="attachments">
+        <i class="fa-solid fa-paperclip"></i>
+        <span>Attachments</span>
+      </div>
+      <div class="nav-item" data-page="sent">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>Sent Logs</span>
+      </div>
+      <div class="nav-item" data-page="suppression">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>Suppression List</span>
+      </div>
+      <div class="nav-item" data-page="settings">
+        <i class="fa-solid fa-sliders"></i>
+        <span>Settings & Email</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-status">
+        <div class="user-info">
+          <div class="user-avatar">AD</div>
+          <div class="user-meta">
+            <div class="name">Administrator</div>
+            <div class="role">Local Console</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    
+    <!-- PAGE 1: DASHBOARD -->
+    <section id="page-dashboard" class="page-view">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Outreach Campaign Overview</h1>
+          <p>Real-time campaign analytics, pacing control, and dispatch runner.</p>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <select id="dash-campaign-select" class="form-control" style="min-width: 280px;"></select>
+          <button class="btn btn-primary" onclick="App.openCreateCampaignModal()">
+            <i class="fa-solid fa-plus"></i> New Campaign
+          </button>
+        </div>
+      </div>
+
+      <!-- Campaign Banner Info -->
+      <div class="glass-panel" id="campaign-banner" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+            <h2 id="banner-campaign-name" style="font-size: 1.4rem; font-weight: 700;">Loading campaign...</h2>
+            <span id="banner-status-badge" class="badge badge-draft">DRAFT</span>
+          </div>
+          <p id="banner-campaign-desc" style="color: var(--text-secondary); font-size: 0.9rem;">-</p>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;" id="banner-mode-indicators"></div>
+      </div>
+
+      <!-- Metrics Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card accent">
+          <span class="label">Total Leads</span>
+          <span class="value" id="m-total">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">Drafted</span>
+          <span class="value" id="m-drafted">0</span>
+        </div>
+        <div class="metric-card success-accent">
+          <span class="label">Approved</span>
+          <span class="value" id="m-approved">0</span>
+        </div>
+        <div class="metric-card warning-accent">
+          <span class="label">In Queue</span>
+          <span class="value" id="m-queued">0</span>
+        </div>
+        <div class="metric-card success-accent">
+          <span class="label">Sent</span>
+          <span class="value" id="m-sent" style="color: #34d399;">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">Failed</span>
+          <span class="value" id="m-failed" style="color: #f87171;">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">Skipped</span>
+          <span class="value" id="m-skipped" style="color: #9ca3af;">0</span>
+        </div>
+      </div>
+
+      <!-- Control Command Centre -->
+      <div class="glass-panel">
+        <h3 style="margin-bottom: 1rem; font-size: 1.1rem;"><i class="fa-solid fa-gamepad" style="color: #60a5fa; margin-right: 8px;"></i> Campaign Control Centre</h3>
+        
+        <div class="control-bar" style="margin-bottom: 1.25rem;">
+          <button class="btn btn-secondary" onclick="App.generateDrafts()"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Drafts</button>
+          <button class="btn btn-success" id="btn-start" onclick="App.startCampaign()"><i class="fa-solid fa-play"></i> Start Campaign</button>
+          <button class="btn btn-warning" id="btn-pause" onclick="App.pauseCampaign()"><i class="fa-solid fa-pause"></i> Pause</button>
+          <button class="btn btn-secondary" id="btn-resume" onclick="App.resumeCampaign()"><i class="fa-solid fa-forward-step"></i> Resume</button>
+          <button class="btn btn-danger" onclick="App.confirmStopCampaign()"><i class="fa-solid fa-stop"></i> Stop Campaign</button>
+        </div>
+
+        <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-weight: 600;"><i class="fa-solid fa-bolt" style="color: #f59e0b; margin-right: 6px;"></i> Batch Dispatch Runner</span>
+            <span id="dispatch-queue-count" style="font-size: 0.85rem; color: var(--text-secondary);">0 pending in queue</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Dispatches queued emails under your configured campaign pacing delay and rate constraints.
+          </p>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn btn-primary" id="btn-dispatch" onclick="App.dispatchBatch()">
+              <i class="fa-solid fa-paper-plane"></i> Dispatch Next Batch
+            </button>
+            <span id="dispatch-live-status" style="font-size: 0.85rem; font-weight: 500; color: #60a5fa;"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Sent Log -->
+      <div class="glass-panel">
+        <h3 style="margin-bottom: 1rem; font-size: 1.1rem;"><i class="fa-solid fa-clock-rotate-left" style="color: #38bdf8; margin-right: 8px;"></i> Recent Dispatched Activity</h3>
+        <div class="table-container">
+          <table id="dash-recent-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Intended Lead</th>
+                <th>Actual Destination</th>
+                <th>Subject Line</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 2: CAMPAIGNS -->
+    <section id="page-campaigns" class="page-view" style="display: none;">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Campaign Management</h1>
+          <p>Create, configure safety rules, and manage UK outreach campaigns.</p>
+        </div>
+        <button class="btn btn-primary" onclick="App.openCreateCampaignModal()">
+          <i class="fa-solid fa-plus"></i> New Campaign
+        </button>
+      </div>
+
+      <div class="glass-panel">
+        <div class="table-container">
+          <table id="campaigns-table">
+            <thead>
+              <tr>
+                <th>Campaign Name</th>
+                <th>Status</th>
+                <th>AI Personalization</th>
+                <th>Safety Mode</th>
+                <th>Delay (s)</th>
+                <th>Leads</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 3: LEADS & IMPORT -->
+    <section id="page-leads" class="page-view" style="display: none;">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Leads & Document Import</h1>
+          <p>Import CSV/XLSX contact files with smart auto-column detection and validation.</p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <select id="leads-campaign-select" class="form-control" style="min-width: 250px;"></select>
+          <button class="btn btn-primary" onclick="document.getElementById('lead-file-input').click()">
+            <i class="fa-solid fa-file-arrow-up"></i> Upload CSV / XLSX
+          </button>
+          <input type="file" id="lead-file-input" style="display: none;" accept=".csv,.xlsx,.xls" onchange="App.handleFileUpload(event)">
+        </div>
+      </div>
+
+      <div class="glass-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 id="leads-count-heading" style="font-size: 1.1rem;">Leads Directory</h3>
+          <button class="btn btn-secondary btn-sm" onclick="App.loadLeads()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="table-container">
+          <table id="leads-table">
+            <thead>
+              <tr>
+                <th>Company / NHS Trust</th>
+                <th>Contact Name</th>
+                <th>Email Address</th>
+                <th>Job Title</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Approved</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 4: DRAFTS REVIEW -->
+    <section id="page-drafts" class="page-view" style="display: none;">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Draft Review & Personalization</h1>
+          <p>Inspect, edit, regenerate, approve, or reject personalized outreach drafts.</p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <select id="drafts-campaign-select" class="form-control" style="min-width: 250px;"></select>
+          <button class="btn btn-success" onclick="App.bulkApprove()"><i class="fa-solid fa-check-double"></i> Approve All Drafted</button>
+        </div>
+      </div>
+
+      <div id="drafts-container" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+    </section>
+
+    <!-- PAGE 5: TEMPLATES -->
+    <section id="page-templates" class="page-view" style="display: none;">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Email Templates</h1>
+          <p>Create and customize modular outreach copy with dynamic placeholder variables.</p>
+        </div>
+        <button class="btn btn-primary" onclick="App.openCreateTemplateModal()"><i class="fa-solid fa-plus"></i> New Template</button>
+      </div>
+
+      <div class="glass-panel">
+        <div class="table-container">
+          <table id="templates-table">
+            <thead>
+              <tr>
+                <th>Template Name</th>
+                <th>Subject Line</th>
+                <th>Description</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 6: ATTACHMENTS -->
+    <section id="page-attachments" class="page-view" style="display: none;">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Brochures & Attachments</h1>
+          <p>Upload PDF brochures, compliance SLA frameworks, and case studies.</p>
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="document.getElementById('att-file-input').click()">
+            <i class="fa-solid fa-upload"></i> Upload Attachment
+          </button>
+          <input type="file" id="att-file-input" style="display: none;" onchange="App.handleAttachmentUpload(event)">
+        </div>
+      </div>
+
+      <div class="glass-panel">
+        <div class="table-container">
+          <table id="attachments-table">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Size (KB)</th>
+                <th>Type</th>
+                <th>Uploaded</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 7: SENT LOGS -->
+    <section id="page-sent" class="page-view" style="display: none;">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Dispatched Email Logs</h1>
+          <p>Full audit trail of delivered, test-intercepted, and simulated messages.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="App.loadSentLogs()"><i class="fa-solid fa-rotate"></i> Refresh Logs</button>
+      </div>
+
+      <div class="glass-panel">
+        <div class="table-container">
+          <table id="sent-logs-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Intended Lead</th>
+                <th>Actual Destination</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Mode</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 8: SUPPRESSION LIST -->
+    <section id="page-suppression" class="page-view" style="display: none;">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Unsubscribe & Suppression List</h1>
+          <p>Prevent sending to opt-out contacts and maintain strict compliance.</p>
+        </div>
+        <button class="btn btn-primary" onclick="App.openAddSuppressionModal()"><i class="fa-solid fa-plus"></i> Suppress Email</button>
+      </div>
+
+      <div class="glass-panel">
+        <div class="table-container">
+          <table id="suppression-table">
+            <thead>
+              <tr>
+                <th>Suppressed Email</th>
+                <th>Reason</th>
+                <th>Added Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 9: SETTINGS & EMAIL CONFIGURATION -->
+    <section id="page-settings" class="page-view" style="display: none;">
+      <div class="page-header">
+        <div class="header-title">
+          <h1>Settings & Integrations</h1>
+          <p>Configure your personal/work email gateway (SMTP/Gmail) and Gemini AI.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- SMTP Email Gateway -->
+        <div class="glass-panel">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <h3 style="font-size: 1.15rem;"><i class="fa-solid fa-envelope" style="color: #38bdf8; margin-right: 8px;"></i> SMTP Email Account</h3>
+            <span id="smtp-status-badge" class="badge badge-draft">Checking...</span>
+          </div>
+
+          <form id="smtp-form" onsubmit="App.saveSmtp(event)">
+            <div class="form-group">
+              <label class="form-label">SMTP Host</label>
+              <input type="text" id="smtp-host" class="form-control" placeholder="smtp.gmail.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">SMTP Port</label>
+              <input type="number" id="smtp-port" class="form-control" value="587" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Your Email Address (Username)</label>
+              <input type="email" id="smtp-user" class="form-control" placeholder="your_email@gmail.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Password / Google App Password</label>
+              <input type="password" id="smtp-pass" class="form-control" placeholder="16-character app password" required>
+              <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block;">
+                For Gmail: Create a 16-character App Password under Google Account -> Security -> App Passwords.
+              </span>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="smtp-tls" checked>
+              <label for="smtp-tls" style="margin: 0; font-size: 0.85rem; font-weight: 500;">Enable TLS / STARTTLS</label>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save SMTP Credentials</button>
+              <button type="button" class="btn btn-secondary" onclick="App.testSmtp()"><i class="fa-solid fa-vial"></i> Test Connection</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Gemini AI Config -->
+        <div class="glass-panel">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <h3 style="font-size: 1.15rem;"><i class="fa-solid fa-brain" style="color: #a855f7; margin-right: 8px;"></i> Gemini AI Integration</h3>
+            <span id="gemini-status-badge" class="badge badge-draft">Checking...</span>
+          </div>
+
+          <form id="gemini-form" onsubmit="App.saveGemini(event)">
+            <div class="form-group">
+              <label class="form-label">Gemini API Key</label>
+              <input type="password" id="gemini-key" class="form-control" placeholder="AIzaSy...">
+              <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block;">
+                Enables zero-hallucination UK teleradiology draft personalization. Optional if using template mode.
+              </span>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save API Key</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: CREATE CAMPAIGN -->
+  <div class="modal-overlay" id="modal-create-campaign">
+    <div class="modal-card">
+      <h2 style="margin-bottom: 1.25rem; font-size: 1.4rem;">Create Outreach Campaign</h2>
+      <form onsubmit="App.submitCreateCampaign(event)">
+        <div class="form-group">
+          <label class="form-label">Campaign Name *</label>
+          <input type="text" id="new-camp-name" class="form-control" placeholder="e.g. UK NHS Diagnostic Capacity Q4" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description / Clinical Focus</label>
+          <input type="text" id="new-camp-desc" class="form-control" placeholder="Outreach for MRI/CT overflow reporting">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Base Email Template *</label>
+          <select id="new-camp-template" class="form-control" required></select>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Sender Display Name</label>
+            <input type="text" id="new-camp-sender-name" class="form-control" value="Dr. Alistair Vance">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sender Email</label>
+            <input type="email" id="new-camp-sender-email" class="form-control" value="outreach@uk-teleradiology-partners.co.uk">
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 1rem; margin-bottom: 1.25rem;">
+          <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;"><i class="fa-solid fa-shield-halved" style="color: #60a5fa; margin-right: 6px;"></i> Safety & Modes</h4>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+              <input type="checkbox" id="new-camp-ai"> <span>✨ Enable Gemini AI Personalization</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+              <input type="checkbox" id="new-camp-test" checked> <span>🧪 Test Mode (Redirects all emails to address below)</span>
+            </label>
+            <input type="email" id="new-camp-test-rec" class="form-control" placeholder="Your test email (e.g. mytest@gmail.com)" value="samx22220@gmail.com">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+              <input type="checkbox" id="new-camp-dry"> <span>📄 Dry-Run Simulation (No real SMTP sending)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Delay Between Sends (Seconds)</label>
+            <input type="number" id="new-camp-delay" class="form-control" value="5" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Daily Send Limit</label>
+            <input type="number" id="new-camp-limit" class="form-control" value="100" min="1">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Campaign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE TEMPLATE -->
+  <div class="modal-overlay" id="modal-create-template">
+    <div class="modal-card">
+      <h2 style="margin-bottom: 1.25rem; font-size: 1.4rem;">Create Email Template</h2>
+      <form onsubmit="App.submitCreateTemplate(event)">
+        <div class="form-group">
+          <label class="form-label">Template Title *</label>
+          <input type="text" id="new-tpl-name" class="form-control" placeholder="e.g. Rapid SLA Out-of-Hours Reporting" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Short Description</label>
+          <input type="text" id="new-tpl-desc" class="form-control" placeholder="Targeted at Clinical Diagnostic Leads">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject Line *</label>
+          <input type="text" id="new-tpl-subj" class="form-control" placeholder="Teleradiology Capacity & Support for {{company_name}}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Body Content *</label>
+          <textarea id="new-tpl-body" class="form-control" style="height: 200px;" required placeholder="Dear {{first_name}},&#10;&#10;I hope this message finds you well...&#10;&#10;Kind regards,&#10;{{sender_name}}"></textarea>
+          <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block;">
+            Supported variables: `{{first_name}}`, `{{company_name}}`, `{{location}}`, `{{sender_name}}`, etc.
+          </span>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Template</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD SUPPRESSION -->
+  <div class="modal-overlay" id="modal-add-suppression">
+    <div class="modal-card" style="max-width: 450px;">
+      <h2 style="margin-bottom: 1.25rem; font-size: 1.4rem;">Add Suppressed Email</h2>
+      <form onsubmit="App.submitAddSuppression(event)">
+        <div class="form-group">
+          <label class="form-label">Email Address *</label>
+          <input type="email" id="new-supp-email" class="form-control" placeholder="optout@nhs-trust.co.uk" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reason</label>
+          <input type="text" id="new-supp-reason" class="form-control" value="Unsubscribed by request">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-danger">Suppress Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
