@@ -197,8 +197,11 @@ const App = {
         <td>${c.delay_seconds}s</td>
         <td><b>${c.sent_leads} / ${c.total_leads}</b></td>
         <td>
-          <button class="btn btn-secondary btn-sm" onclick="App.selectCampaign(${c.id})"><i class="fa-solid fa-arrow-right"></i> Open</button>
-          <button class="btn btn-danger btn-sm" onclick="App.deleteCampaign(${c.id})"><i class="fa-solid fa-trash"></i></button>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" onclick="App.selectCampaign(${c.id})" title="Open Dashboard"><i class="fa-solid fa-arrow-right"></i> Open</button>
+            <button class="btn btn-secondary btn-sm" onclick="App.openEditCampaignModal(${c.id})" title="Edit Campaign"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="App.deleteCampaign(${c.id})" title="Delete Campaign"><i class="fa-solid fa-trash"></i></button>
+          </div>
         </td>
       `;
       tbody.appendChild(tr);
@@ -209,6 +212,100 @@ const App = {
     this.state.currentCampaignId = id;
     this.populateCampaignSelectors();
     this.switchPage("dashboard");
+  },
+
+  async deleteCampaign(id) {
+    const camp = this.state.campaigns.find(c => c.id === id);
+    const name = camp ? camp.name : `Campaign #${id}`;
+    if (!confirm(`Are you sure you want to delete "${name}"? All associated leads and queue items will also be removed.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/campaigns/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        this.toast(`Campaign "${name}" deleted successfully`, "info");
+        if (this.state.currentCampaignId === id) {
+          this.state.currentCampaignId = null;
+        }
+        await this.loadCampaigns();
+      } else {
+        const data = await res.json();
+        this.toast(data.detail || "Error deleting campaign", "error");
+      }
+    } catch (e) {
+      this.toast("Network error deleting campaign", "error");
+    }
+  },
+
+  async openEditCampaignModal(id) {
+    try {
+      const res = await fetch(`${API_BASE}/campaigns/${id}`);
+      if (!res.ok) throw new Error("Campaign not found");
+      const c = await res.json();
+
+      document.getElementById("edit-camp-id").value = c.id;
+      document.getElementById("edit-camp-name").value = c.name;
+      document.getElementById("edit-camp-desc").value = c.description || "";
+      document.getElementById("edit-camp-sender-name").value = c.sender_name || "";
+      document.getElementById("edit-camp-sender-email").value = c.sender_email || "";
+      document.getElementById("edit-camp-sender-company").value = c.sender_company || "";
+
+      const tplSel = document.getElementById("edit-camp-template");
+      tplSel.innerHTML = "";
+      this.state.templates.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = t.name;
+        if (t.id === c.template_id) opt.selected = true;
+        tplSel.appendChild(opt);
+      });
+
+      document.getElementById("edit-camp-ai").checked = !!c.ai_enabled;
+      document.getElementById("edit-camp-test").checked = !!c.test_mode;
+      document.getElementById("edit-camp-test-rec").value = c.test_recipient || "";
+      document.getElementById("edit-camp-dry").checked = !!c.dry_run;
+      document.getElementById("edit-camp-delay").value = c.delay_seconds || 5;
+      document.getElementById("edit-camp-limit").value = c.daily_limit || 100;
+      document.getElementById("edit-camp-max-batch").value = c.max_emails_per_run || 50;
+
+      document.getElementById("modal-edit-campaign").style.display = "flex";
+    } catch (err) {
+      this.toast("Failed to load campaign details for editing", "error");
+    }
+  },
+
+  async submitEditCampaign(event) {
+    event.preventDefault();
+    const id = document.getElementById("edit-camp-id").value;
+    const payload = {
+      name: document.getElementById("edit-camp-name").value,
+      description: document.getElementById("edit-camp-desc").value,
+      template_id: parseInt(document.getElementById("edit-camp-template").value),
+      sender_name: document.getElementById("edit-camp-sender-name").value,
+      sender_email: document.getElementById("edit-camp-sender-email").value,
+      sender_company: document.getElementById("edit-camp-sender-company").value,
+      ai_enabled: document.getElementById("edit-camp-ai").checked,
+      test_mode: document.getElementById("edit-camp-test").checked,
+      test_recipient: document.getElementById("edit-camp-test-rec").value,
+      dry_run: document.getElementById("edit-camp-dry").checked,
+      delay_seconds: parseInt(document.getElementById("edit-camp-delay").value),
+      daily_limit: parseInt(document.getElementById("edit-camp-limit").value),
+      max_emails_per_run: parseInt(document.getElementById("edit-camp-max-batch").value)
+    };
+
+    const res = await fetch(`${API_BASE}/campaigns/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      this.toast("Campaign updated successfully!", "success");
+      this.closeModals();
+      await this.loadCampaigns();
+    } else {
+      const data = await res.json();
+      this.toast(data.detail || "Error updating campaign", "error");
+    }
   },
 
   // ==================== CAMPAIGN ACTIONS ====================
@@ -284,7 +381,7 @@ const App = {
       tbody.innerHTML = "";
 
       if (this.state.leads.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No leads uploaded yet. Use the Upload button above.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No leads uploaded yet. Use the Upload button above.</td></tr>`;
         return;
       }
 
@@ -298,11 +395,50 @@ const App = {
           <td>${l.location || '-'}</td>
           <td><span class="badge badge-${l.status.toLowerCase()}">${l.status}</span></td>
           <td>${l.approved ? '✅' : '❌'}</td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="App.deleteLead(${l.id})" title="Delete Lead"><i class="fa-solid fa-trash"></i></button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
     } catch (e) {
       this.toast("Failed to load leads", "error");
+    }
+  },
+
+  async deleteLead(id) {
+    if (!confirm("Are you sure you want to delete this lead?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/leads/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        this.toast("Lead deleted", "info");
+        this.loadLeads();
+        this.loadDrafts();
+        this.loadCampaigns();
+      } else {
+        const data = await res.json();
+        this.toast(data.detail || "Error deleting lead", "error");
+      }
+    } catch (e) {
+      this.toast("Network error deleting lead", "error");
+    }
+  },
+
+  async clearCampaignLeads() {
+    if (!this.state.currentCampaignId) return;
+    if (!confirm("Are you sure you want to delete ALL leads in this campaign? This action cannot be undone.")) return;
+    try {
+      const res = await fetch(`${API_BASE}/campaigns/${this.state.currentCampaignId}/leads`, { method: "DELETE" });
+      if (res.ok) {
+        this.toast("All leads removed from this campaign", "info");
+        this.loadLeads();
+        this.loadDrafts();
+        this.loadCampaigns();
+      } else {
+        this.toast("Failed to clear leads", "error");
+      }
+    } catch (e) {
+      this.toast("Network error clearing leads", "error");
     }
   },
 
@@ -374,6 +510,7 @@ const App = {
             <button class="btn btn-secondary btn-sm" onclick="App.regenerateDraft(${l.id})"><i class="fa-solid fa-wand-magic-sparkles"></i> Regenerate</button>
             <button class="btn btn-danger btn-sm" onclick="App.rejectLead(${l.id})"><i class="fa-solid fa-xmark"></i> Reject</button>
             <button class="btn btn-success btn-sm" onclick="App.approveLead(${l.id})"><i class="fa-solid fa-check"></i> Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="App.deleteLead(${l.id})" title="Delete Lead"><i class="fa-solid fa-trash"></i></button>
           </div>
         `;
         container.appendChild(card);
@@ -455,12 +592,77 @@ const App = {
           <td>${t.subject}</td>
           <td><small style="color: var(--text-muted);">${t.description || '-'}</small></td>
           <td>
-            <button class="btn btn-danger btn-sm" onclick="App.deleteTemplate(${t.id})"><i class="fa-solid fa-trash"></i></button>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-secondary btn-sm" onclick="App.openEditTemplateModal(${t.id})" title="Edit Template"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="App.deleteTemplate(${t.id})" title="Delete Template"><i class="fa-solid fa-trash"></i></button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
       });
     } catch (e) {}
+  },
+
+  async deleteTemplate(id) {
+    const tpl = this.state.templates.find(t => t.id === id);
+    const name = tpl ? tpl.name : `Template #${id}`;
+    if (!confirm(`Are you sure you want to delete template "${name}"?`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/templates/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        this.toast(`Template "${name}" deleted`, "info");
+        await this.loadTemplates();
+        await this.loadCampaigns();
+      } else {
+        const data = await res.json();
+        this.toast(data.detail || "Error deleting template", "error");
+      }
+    } catch (e) {
+      this.toast("Network error deleting template", "error");
+    }
+  },
+
+  async openEditTemplateModal(id) {
+    try {
+      const res = await fetch(`${API_BASE}/templates/${id}`);
+      if (!res.ok) throw new Error("Template not found");
+      const t = await res.json();
+
+      document.getElementById("edit-tpl-id").value = t.id;
+      document.getElementById("edit-tpl-name").value = t.name;
+      document.getElementById("edit-tpl-desc").value = t.description || "";
+      document.getElementById("edit-tpl-subj").value = t.subject;
+      document.getElementById("edit-tpl-body").value = t.body;
+
+      document.getElementById("modal-edit-template").style.display = "flex";
+    } catch (err) {
+      this.toast("Failed to load template for editing", "error");
+    }
+  },
+
+  async submitEditTemplate(event) {
+    event.preventDefault();
+    const id = document.getElementById("edit-tpl-id").value;
+    const payload = {
+      name: document.getElementById("edit-tpl-name").value,
+      description: document.getElementById("edit-tpl-desc").value,
+      subject: document.getElementById("edit-tpl-subj").value,
+      body: document.getElementById("edit-tpl-body").value
+    };
+
+    const res = await fetch(`${API_BASE}/templates/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      this.toast("Template updated successfully!", "success");
+      this.closeModals();
+      this.loadTemplates();
+    } else {
+      const data = await res.json();
+      this.toast(data.detail || "Error updating template", "error");
+    }
   },
 
   // ==================== ATTACHMENTS ====================
@@ -484,7 +686,7 @@ const App = {
           <td><code>${a.mime_type || 'file'}</code></td>
           <td>${new Date(a.created_at).toLocaleDateString()}</td>
           <td>
-            <button class="btn btn-danger btn-sm" onclick="App.deleteAttachment(${a.id})"><i class="fa-solid fa-trash"></i></button>
+            <button class="btn btn-danger btn-sm" onclick="App.deleteAttachment(${a.id})" title="Delete Attachment"><i class="fa-solid fa-trash"></i></button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -508,10 +710,14 @@ const App = {
   },
 
   async deleteAttachment(id) {
-    if (confirm("Delete this attachment?")) {
-      await fetch(`${API_BASE}/attachments/${id}`, { method: "DELETE" });
-      this.toast("Attachment removed", "info");
-      this.loadAttachments();
+    if (confirm("Are you sure you want to delete this attachment?")) {
+      const res = await fetch(`${API_BASE}/attachments/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        this.toast("Attachment removed", "info");
+        this.loadAttachments();
+      } else {
+        this.toast("Error removing attachment", "error");
+      }
     }
   },
 
@@ -524,7 +730,7 @@ const App = {
       tbody.innerHTML = "";
 
       if (logs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No sent logs recorded yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No sent logs recorded yet.</td></tr>`;
         return;
       }
 
@@ -542,10 +748,39 @@ const App = {
           <td>${statusBadge}</td>
           <td>${l.is_test ? '🧪 Test' : (l.is_dry_run ? '📄 Dry-Run' : '🚀 Live')}</td>
           <td><small style="color: ${l.error_message ? '#f87171' : 'var(--text-muted)'};">${l.error_message || 'Delivered'}</small></td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="App.deleteSentLog(${l.id})" title="Delete Log Record"><i class="fa-solid fa-trash"></i></button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
     } catch (e) {}
+  },
+
+  async deleteSentLog(id) {
+    if (!confirm("Delete this log record?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/sent/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        this.toast("Log record removed", "info");
+        this.loadSentLogs();
+      }
+    } catch (e) {
+      this.toast("Failed to delete log", "error");
+    }
+  },
+
+  async clearSentLogs() {
+    if (!confirm("Are you sure you want to delete ALL dispatched email logs?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/sent`, { method: "DELETE" });
+      if (res.ok) {
+        this.toast("All dispatched logs cleared", "info");
+        this.loadSentLogs();
+      }
+    } catch (e) {
+      this.toast("Failed to clear logs", "error");
+    }
   },
 
   // ==================== SUPPRESSION ====================
@@ -568,7 +803,7 @@ const App = {
           <td>${s.reason}</td>
           <td>${new Date(s.created_at).toLocaleDateString()}</td>
           <td>
-            <button class="btn btn-danger btn-sm" onclick="App.deleteSuppression(${s.id})"><i class="fa-solid fa-trash"></i></button>
+            <button class="btn btn-danger btn-sm" onclick="App.deleteSuppression(${s.id})" title="Remove from suppression"><i class="fa-solid fa-trash"></i></button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -577,9 +812,16 @@ const App = {
   },
 
   async deleteSuppression(id) {
-    await fetch(`${API_BASE}/suppression/${id}`, { method: "DELETE" });
-    this.toast("Removed from suppression", "info");
-    this.loadSuppression();
+    if (!confirm("Remove this email from suppression list?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/suppression/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        this.toast("Removed from suppression", "info");
+        this.loadSuppression();
+      }
+    } catch (e) {
+      this.toast("Failed to remove suppression", "error");
+    }
   },
 
   // ==================== SETTINGS & EMAIL ====================

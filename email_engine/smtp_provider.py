@@ -32,8 +32,19 @@ class SmtpEmailProvider(BaseEmailProvider):
 
     def test_connection(self) -> tuple[bool, Optional[str]]:
         """Verifies SMTP credentials and server connectivity."""
-        if not self.is_configured():
-            return False, "SMTP settings incomplete (Host, Username, or Password missing)."
+        # Verify required SMTP configuration
+        missing = []
+        if not self.host:
+            missing.append('SMTP_HOST')
+        if not self.username:
+            missing.append('SMTP_USERNAME')
+        if not self.password:
+            missing.append('SMTP_PASSWORD')
+        if missing:
+            msg = f"SMTP settings incomplete: missing {', '.join(missing)}."
+            logger.error(msg)
+            return False, msg
+        # All required settings present, continue with connection test
 
         try:
             if self.port == 465:

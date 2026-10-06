@@ -225,10 +225,13 @@
           <h1>Leads & Document Import</h1>
           <p>Import CSV/XLSX contact files with smart auto-column detection and validation.</p>
         </div>
-        <div style="display: flex; gap: 12px;">
+        <div style="display: flex; gap: 12px; align-items: center;">
           <select id="leads-campaign-select" class="form-control" style="min-width: 250px;"></select>
           <button class="btn btn-primary" onclick="document.getElementById('lead-file-input').click()">
             <i class="fa-solid fa-file-arrow-up"></i> Upload CSV / XLSX
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="App.clearCampaignLeads()" title="Delete all leads in current campaign">
+            <i class="fa-solid fa-trash"></i> Clear Leads
           </button>
           <input type="file" id="lead-file-input" style="display: none;" accept=".csv,.xlsx,.xls" onchange="App.handleFileUpload(event)">
         </div>
@@ -250,6 +253,7 @@
                 <th>Location</th>
                 <th>Status</th>
                 <th>Approved</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -341,7 +345,10 @@
           <h1>Dispatched Email Logs</h1>
           <p>Full audit trail of delivered, test-intercepted, and simulated messages.</p>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="App.loadSentLogs()"><i class="fa-solid fa-rotate"></i> Refresh Logs</button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn btn-secondary btn-sm" onclick="App.loadSentLogs()"><i class="fa-solid fa-rotate"></i> Refresh Logs</button>
+          <button class="btn btn-danger btn-sm" onclick="App.clearSentLogs()" title="Delete all dispatched email logs"><i class="fa-solid fa-trash"></i> Clear All Logs</button>
+        </div>
       </div>
 
       <div class="glass-panel">
@@ -356,6 +363,7 @@
                 <th>Status</th>
                 <th>Mode</th>
                 <th>Details</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -576,6 +584,111 @@
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
           <button type="button" class="btn btn-secondary" onclick="App.closeModals()">Cancel</button>
           <button type="submit" class="btn btn-danger">Suppress Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT CAMPAIGN -->
+  <div class="modal-overlay" id="modal-edit-campaign">
+    <div class="modal-card">
+      <h2 style="margin-bottom: 1.25rem; font-size: 1.4rem;"><i class="fa-solid fa-pen-to-square" style="color: #60a5fa; margin-right: 8px;"></i> Edit Outreach Campaign</h2>
+      <form onsubmit="App.submitEditCampaign(event)">
+        <input type="hidden" id="edit-camp-id">
+        <div class="form-group">
+          <label class="form-label">Campaign Name *</label>
+          <input type="text" id="edit-camp-name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description / Clinical Focus</label>
+          <input type="text" id="edit-camp-desc" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Base Email Template *</label>
+          <select id="edit-camp-template" class="form-control" required></select>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Sender Display Name</label>
+            <input type="text" id="edit-camp-sender-name" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sender Email</label>
+            <input type="email" id="edit-camp-sender-email" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Sender Company</label>
+          <input type="text" id="edit-camp-sender-company" class="form-control">
+        </div>
+
+        <div class="glass-panel" style="padding: 1rem; margin-bottom: 1.25rem;">
+          <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;"><i class="fa-solid fa-shield-halved" style="color: #60a5fa; margin-right: 6px;"></i> Safety & Modes</h4>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+              <input type="checkbox" id="edit-camp-ai"> <span>✨ Enable Gemini AI Personalization</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+              <input type="checkbox" id="edit-camp-test"> <span>🧪 Test Mode (Redirects all emails to address below)</span>
+            </label>
+            <input type="email" id="edit-camp-test-rec" class="form-control" placeholder="Your test email (e.g. instarad18@gmail.com)">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+              <input type="checkbox" id="edit-camp-dry"> <span>📄 Dry-Run Simulation (No real SMTP sending)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Delay Between Sends (Seconds)</label>
+            <input type="number" id="edit-camp-delay" class="form-control" min="0" value="5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Daily Send Limit</label>
+            <input type="number" id="edit-camp-limit" class="form-control" min="1" value="100">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Max Emails Per Batch Run</label>
+          <input type="number" id="edit-camp-max-batch" class="form-control" min="1" max="200" value="50">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Campaign Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT TEMPLATE -->
+  <div class="modal-overlay" id="modal-edit-template">
+    <div class="modal-card">
+      <h2 style="margin-bottom: 1.25rem; font-size: 1.4rem;"><i class="fa-solid fa-pen-to-square" style="color: #60a5fa; margin-right: 8px;"></i> Edit Email Template</h2>
+      <form onsubmit="App.submitEditTemplate(event)">
+        <input type="hidden" id="edit-tpl-id">
+        <div class="form-group">
+          <label class="form-label">Template Title *</label>
+          <input type="text" id="edit-tpl-name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Short Description</label>
+          <input type="text" id="edit-tpl-desc" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject Line *</label>
+          <input type="text" id="edit-tpl-subj" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Body Content *</label>
+          <textarea id="edit-tpl-body" class="form-control" style="height: 200px;" required></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Template Changes</button>
         </div>
       </form>
     </div>

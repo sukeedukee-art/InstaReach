@@ -191,6 +191,30 @@ def create_campaign(req: CampaignCreateRequest):
         )
         return {"success": True, "id": c.id, "name": c.name}
 
+@app.get("/api/campaigns/{campaign_id}")
+def get_campaign(campaign_id: int):
+    with get_db() as db:
+        c = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+        if not c:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        return {
+            "id": c.id,
+            "name": c.name,
+            "description": c.description or "",
+            "status": c.status,
+            "sender_name": c.sender_name or "",
+            "sender_email": c.sender_email or "",
+            "sender_company": c.sender_company or "",
+            "template_id": c.template_id,
+            "ai_enabled": c.ai_enabled,
+            "test_mode": c.test_mode,
+            "test_recipient": c.test_recipient or "",
+            "dry_run": c.dry_run,
+            "delay_seconds": c.delay_seconds,
+            "daily_limit": c.daily_limit,
+            "max_emails_per_run": c.max_emails_per_run,
+        }
+
 @app.put("/api/campaigns/{campaign_id}")
 def update_campaign(campaign_id: int, req: CampaignUpdateRequest):
     with get_db() as db:
@@ -208,7 +232,20 @@ def delete_campaign(campaign_id: int):
         c = db.query(Campaign).filter(Campaign.id == campaign_id).first()
         if not c:
             raise HTTPException(status_code=404, detail="Campaign not found")
+        # Cleanly delete related queue, sent, attachment associations, and leads
+        db.query(EmailQueue).filter(EmailQueue.campaign_id == campaign_id).delete()
+        db.query(SentEmail).filter(SentEmail.campaign_id == campaign_id).delete()
+        db.query(CampaignAttachment).filter(CampaignAttachment.campaign_id == campaign_id).delete()
+        db.query(Lead).filter(Lead.campaign_id == campaign_id).delete()
         db.delete(c)
+        db.commit()
+        return {"success": True}
+
+@app.delete("/api/campaigns/{campaign_id}/leads")
+def delete_all_campaign_leads(campaign_id: int):
+    with get_db() as db:
+        db.query(EmailQueue).filter(EmailQueue.campaign_id == campaign_id).delete()
+        db.query(Lead).filter(Lead.campaign_id == campaign_id).delete()
         db.commit()
         return {"success": True}
 
@@ -337,6 +374,17 @@ def reject_lead(lead_id: int):
         db.commit()
         return {"success": True}
 
+@app.delete("/api/leads/{lead_id}")
+def delete_lead(lead_id: int):
+    with get_db() as db:
+        lead = db.query(Lead).filter(Lead.id == lead_id).first()
+        if not lead:
+            raise HTTPException(status_code=404, detail="Lead not found")
+        db.query(EmailQueue).filter(EmailQueue.lead_id == lead_id).delete()
+        db.delete(lead)
+        db.commit()
+        return {"success": True}
+
 @app.post("/api/leads/{lead_id}/regenerate")
 def regenerate_lead_draft(lead_id: int):
     with get_db() as db:
@@ -409,12 +457,27 @@ def update_template(template_id: int, req: TemplateUpdateRequest):
         db.commit()
         return {"success": True}
 
+@app.get("/api/templates/{template_id}")
+def get_template(template_id: int):
+    with get_db() as db:
+        t = db.query(EmailTemplate).filter(EmailTemplate.id == template_id).first()
+        if not t:
+            raise HTTPException(status_code=404, detail="Template not found")
+        return {
+            "id": t.id,
+            "name": t.name,
+            "description": t.description or "",
+            "subject": t.subject,
+            "body": t.body,
+        }
+
 @app.delete("/api/templates/{template_id}")
 def delete_template(template_id: int):
     with get_db() as db:
         t = db.query(EmailTemplate).filter(EmailTemplate.id == template_id).first()
         if not t:
             raise HTTPException(status_code=404, detail="Template not found")
+        db.query(Campaign).filter(Campaign.template_id == template_id).update({Campaign.template_id: None})
         db.delete(t)
         db.commit()
         return {"success": True}
@@ -474,6 +537,23 @@ def list_sent(campaign_id: Optional[int] = None):
             "error_message": r.error_message,
             "sent_at": r.sent_at.isoformat() if r.sent_at else None
         } for r in records]
+
+@app.delete("/api/sent/{sent_id}")
+def delete_sent(sent_id: int):
+    with get_db() as db:
+        record = db.query(SentEmail).filter(SentEmail.id == sent_id).first()
+        if not record:
+            raise HTTPException(status_code=404, detail="Sent record not found")
+        db.delete(record)
+        db.commit()
+        return {"success": True}
+
+@app.delete("/api/sent")
+def clear_sent():
+    with get_db() as db:
+        db.query(SentEmail).delete()
+        db.commit()
+        return {"success": True}
 
 @app.get("/api/suppression")
 def list_suppression():
